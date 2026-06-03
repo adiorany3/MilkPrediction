@@ -5,5 +5,13 @@
     "target_name": "milk_yield_305d",
     "output_unit": "kg",
     "conversion_to_liter": "liter = kg / 1.03",
-    "prediction_note": "Prediction output is 305-day milk yield in kg before conversion to liter."
+    "prediction_note": "Prediction output is 305-day milk yield in kg before conversion to liter.",
+    "baseline_mae_mean": 1546.006226,
+    "model_mae_mean": 1438.030363,
+    "model_rmse_mean": 1798.507144,
+    "r2_mean": -0.125454,
+    "tolerance_kg_305d": 1438.030363,
+    "tolerance_liter_305d": 1396.1459834951456,
+    "tolerance_liter_per_day": 4.577527814738183,
+    "tolerance_note": "Tolerance range is estimated from cross-validation MAE. It is an error tolerance indicator, not a guaranteed confidence interval."
 }

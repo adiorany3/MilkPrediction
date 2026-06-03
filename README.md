@@ -35,7 +35,8 @@ Konfigurasi model:
   "best_regressor": "SVR_rbf_C10",
   "target_name": "milk_yield_305d",
   "output_unit": "kg",
-  "conversion_to_liter": "liter = kg / 1.03"
+  "conversion_to_liter": "liter = kg / 1.03",
+  "tolerance_kg_305d": 1438.030363
 }
 ```
 
@@ -50,6 +51,36 @@ Aplikasi juga menampilkan estimasi rata-rata harian:
 ```text
 liter_per_day = liter_305_day / 305
 ```
+
+## Toleransi kisaran produksi
+
+Aplikasi menampilkan kisaran toleransi produksi berdasarkan nilai **MAE cross-validation** dari model terbaik.
+
+Model terbaik yang digunakan adalah `SVR_rbf_C10` dengan ringkasan evaluasi:
+
+```text
+Baseline MAE : 1546.006226 kg/305 hari
+Model MAE    : 1438.030363 kg/305 hari
+Model RMSE   : 1798.507144 kg/305 hari
+R² rata-rata : -0.125454
+```
+
+Toleransi yang dipakai aplikasi:
+
+```text
+±1438.030363 kg/305 hari
+±1396.146954 liter/305 hari
+±4.577531 liter/hari
+```
+
+Rumus kisaran:
+
+```text
+rentang_bawah = max(0, prediksi - toleransi)
+rentang_atas  = prediksi + toleransi
+```
+
+Catatan: kisaran ini adalah indikator toleransi error berbasis MAE, **bukan confidence interval statistik** dan bukan jaminan bahwa produksi aktual pasti berada di dalam rentang tersebut.
 
 ## Struktur file
 
