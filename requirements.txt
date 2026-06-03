@@ -1,6 +1,8 @@
-# Deploy with Python 3.11 or 3.12 on Streamlit Community Cloud.
-# TensorFlow currently has no stable wheel for Python 3.14 in this deployment environment.
+# Use Python 3.11 on Streamlit Community Cloud.
+# The regressor pickle was trained with scikit-learn 1.2.2, so keep this version pinned.
 streamlit==1.58.0
 numpy==1.26.4
 pillow==11.3.0
 tensorflow-cpu==2.18.1
+scikit-learn==1.2.2
+joblib==1.2.0

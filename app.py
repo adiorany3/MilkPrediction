@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from typing import Any, Dict, Tuple
 
 import numpy as np
 import streamlit as st
@@ -7,8 +8,11 @@ from PIL import Image, ImageOps
 
 
 APP_TITLE = "Prediksi Produksi Susu Sapi Perah"
-MODEL_PATH = Path("milk_yield_model.keras")
+FEATURE_EXTRACTOR_PATH = Path("feature_extractor.keras")
+REGRESSOR_PATH = Path("milk_yield_regressor.pkl")
 CONFIG_PATH = Path("preprocess_config.json")
+KG_PER_LITER = 1.03
+DAYS_IN_TARGET = 305
 
 
 st.set_page_config(
@@ -18,12 +22,10 @@ st.set_page_config(
 )
 
 
-
 def inject_custom_css() -> None:
     st.markdown(
         """
         <style>
-            /* Hide Streamlit default branding and toolbar elements. */
             #MainMenu {
                 visibility: hidden;
             }
@@ -104,42 +106,59 @@ inject_custom_css()
 
 
 @st.cache_data
-def load_config() -> dict:
+def load_config() -> Dict[str, Any]:
     if CONFIG_PATH.exists():
         with open(CONFIG_PATH, "r", encoding="utf-8") as file:
             return json.load(file)
 
     return {
         "img_size": 224,
-        "model_type": "Image regression",
-        "target_name": "milk_yield",
-        "output_note": "Output mengikuti satuan target training.",
+        "model_type": "EfficientNetB0 feature extractor + classical regression",
+        "best_regressor": "SVR_rbf_C10",
+        "target_name": "milk_yield_305d",
+        "output_unit": "kg",
+        "conversion_to_liter": "liter = kg / 1.03",
+        "prediction_note": "Prediction output is 305-day milk yield in kg before conversion to liter.",
     }
 
 
 @st.cache_resource
-def load_prediction_model():
+def load_models() -> Tuple[Any, Any]:
     try:
+        import joblib
         import tensorflow as tf
     except ModuleNotFoundError as error:
         st.error(
-            "TensorFlow belum terinstal. Di Streamlit Community Cloud, pilih Python 3.11 atau 3.12 "
-            "pada Advanced settings, lalu redeploy aplikasi. Python 3.14 belum kompatibel "
-            "dengan paket TensorFlow yang dipakai aplikasi ini."
+            "Dependency model belum lengkap. Pastikan `requirements.txt` berisi TensorFlow, "
+            "scikit-learn, dan joblib. Untuk Streamlit Community Cloud, gunakan Python 3.11."
         )
         raise error
 
+    if not FEATURE_EXTRACTOR_PATH.exists():
+        st.error("File `feature_extractor.keras` tidak ditemukan.")
+        st.stop()
+
+    if not REGRESSOR_PATH.exists():
+        st.error("File `milk_yield_regressor.pkl` tidak ditemukan.")
+        st.stop()
+
     try:
-        return tf.keras.models.load_model(
-            MODEL_PATH,
+        feature_extractor = tf.keras.models.load_model(
+            FEATURE_EXTRACTOR_PATH,
             compile=False,
             safe_mode=False,
         )
     except TypeError:
-        return tf.keras.models.load_model(
-            MODEL_PATH,
+        feature_extractor = tf.keras.models.load_model(
+            FEATURE_EXTRACTOR_PATH,
             compile=False,
         )
+
+    regressor = joblib.load(
+        REGRESSOR_PATH
+    )
+
+    return feature_extractor, regressor
 
 
 def prepare_image(uploaded_file, img_size: int) -> np.ndarray:
@@ -154,35 +173,64 @@ def prepare_image(uploaded_file, img_size: int) -> np.ndarray:
     return image_array
 
 
+def predict_milk_yield(image_array: np.ndarray) -> Tuple[float, float, float]:
+    feature_extractor, regressor = load_models()
+
+    features = feature_extractor.predict(
+        image_array,
+        verbose=0,
+    )
+
+    prediction_kg_305d = float(
+        np.ravel(
+            regressor.predict(features)
+        )[0]
+    )
+
+    prediction_liter_305d = prediction_kg_305d / KG_PER_LITER
+    prediction_liter_per_day = prediction_liter_305d / DAYS_IN_TARGET
+
+    return prediction_kg_305d, prediction_liter_305d, prediction_liter_per_day
+
+
 config = load_config()
 img_size = int(config.get("img_size", 224))
-target_name = config.get("target_name", "milk_yield")
-model_type = config.get("model_type", "Image regression")
-output_note = config.get("output_note", "Output mengikuti satuan target training.")
-source_unit = config.get("source_unit", "kg")
-display_unit = config.get("output_unit", "liter")
-kg_per_liter = float(config.get("kg_per_liter", 1.03))
+target_name = config.get("target_name", "milk_yield_305d")
+model_type = config.get("model_type", "EfficientNetB0 feature extractor + classical regression")
+best_regressor = config.get("best_regressor", "SVR_rbf_C10")
+prediction_note = config.get(
+    "prediction_note",
+    "Prediction output is 305-day milk yield in kg before conversion to liter.",
+)
 
 
 st.title("🐄 Prediksi Produksi Susu Sapi Perah")
 
 st.info(
-    "Model ini menerima gambar sapi perah dan menghasilkan prediksi numerik. "
-    "Nilai asli model mengikuti target saat training. Karena target training dianggap kg/305 hari, "
-    "aplikasi ini mengonversi hasil prediksi menjadi liter dengan asumsi 1 liter susu ≈ 1.03 kg."
+    "Aplikasi ini menggunakan pipeline dua tahap: gambar sapi diproses oleh EfficientNetB0 "
+    "sebagai feature extractor, lalu fitur gambar diprediksi oleh model regresi SVR RBF. "
+    "Output model berupa estimasi 305-day milk yield dalam kg, kemudian dikonversi ke liter."
 )
 
 with st.expander("Informasi model", expanded=False):
-    st.write(f"**Model:** {model_type}")
+    st.write(f"**Feature extractor:** EfficientNetB0")
+    st.write(f"**Regressor:** {best_regressor}")
+    st.write(f"**Pipeline:** {model_type}")
     st.write(f"**Ukuran input gambar:** {img_size} × {img_size} px")
     st.write(f"**Target output:** {target_name}")
-    st.write(f"**Satuan sumber model:** {source_unit}/305 hari")
-    st.write(f"**Satuan tampilan aplikasi:** {display_unit}/305 hari")
-    st.write(f"**Faktor konversi:** 1 liter susu ≈ {kg_per_liter:.2f} kg")
-    st.write(f"**Catatan:** {output_note}")
+    st.write("**Output mentah model:** kg/305 hari")
+    st.write("**Output tampilan aplikasi:** liter/305 hari dan liter/hari")
+    st.write(f"**Faktor konversi:** 1 liter susu ≈ {KG_PER_LITER:.2f} kg")
+    st.write(f"**Catatan:** {prediction_note}")
 
-main_unit_label = "liter/305 hari"
-daily_unit_label = "liter/hari"
+    if "model_mae_mean" in config:
+        st.write(f"**Cross-validation MAE model:** {float(config['model_mae_mean']):,.2f} kg")
+
+    if "baseline_mae_mean" in config:
+        st.write(f"**Baseline MAE:** {float(config['baseline_mae_mean']):,.2f} kg")
+
+    if "r2_mean" in config:
+        st.write(f"**R² rata-rata:** {float(config['r2_mean']):.4f}")
 
 uploaded_file = st.file_uploader(
     "Upload gambar sapi perah",
@@ -206,46 +254,41 @@ if uploaded_file is not None:
     )
 
     if st.button("Prediksi produksi susu", type="primary"):
-        if not MODEL_PATH.exists():
-            st.error("File model milk_yield_model.keras tidak ditemukan.")
-            st.stop()
-
-        with st.spinner("Memuat model dan menjalankan prediksi..."):
-            model = load_prediction_model()
+        with st.spinner("Memuat feature extractor, regressor, dan menjalankan prediksi..."):
             image_array = prepare_image(uploaded_file, img_size)
-            prediction = model.predict(image_array, verbose=0)
-
-        predicted_kg_305d = float(np.ravel(prediction)[0])
-        predicted_liter_305d = predicted_kg_305d / kg_per_liter
+            predicted_kg_305d, predicted_liter_305d, predicted_liter_per_day = predict_milk_yield(
+                image_array
+            )
 
         st.subheader("Hasil Prediksi")
 
         st.metric(
             label=f"Estimasi {target_name}",
-            value=f"{predicted_liter_305d:,.2f} {main_unit_label}",
+            value=f"{predicted_liter_305d:,.2f} liter/305 hari",
         )
 
         if show_daily_average:
-            daily_average_liter = predicted_liter_305d / 305
-
             st.metric(
                 label="Estimasi rata-rata per hari",
-                value=f"{daily_average_liter:,.2f} {daily_unit_label}",
+                value=f"{predicted_liter_per_day:,.2f} liter/hari",
             )
 
-        with st.expander("Detail konversi", expanded=False):
+        with st.expander("Detail prediksi dan konversi", expanded=False):
             st.write(f"Prediksi mentah model: **{predicted_kg_305d:,.2f} kg/305 hari**")
-            st.write(f"Faktor konversi: **1 liter susu ≈ {kg_per_liter:.2f} kg**")
+            st.write(f"Hasil konversi: **{predicted_liter_305d:,.2f} liter/305 hari**")
+            st.write(f"Rata-rata harian: **{predicted_liter_per_day:,.2f} liter/hari**")
+            st.write(f"Faktor konversi: **1 liter susu ≈ {KG_PER_LITER:.2f} kg**")
             st.write("Rumus: **liter = kg / 1.03**")
 
-        st.caption(
-            f"Satuan hasil utama: {main_unit_label}. "
-            f"Satuan rata-rata harian: {daily_unit_label}."
-        )
+        if predicted_kg_305d < 0:
+            st.warning(
+                "Model menghasilkan nilai negatif. Ini menandakan input mungkin jauh berbeda dari data training. "
+                "Gunakan hasil sebagai indikasi bahwa prediksi tidak reliabel untuk gambar ini."
+            )
 
         st.warning(
             "Gunakan hasil ini sebagai estimasi berbasis model, bukan sebagai pengukuran produksi aktual. "
-            "Akurasi sangat bergantung pada kualitas dataset training, sudut foto, pencahayaan, dan kemiripan gambar input dengan data training."
+            "Model bersifat eksperimental karena dataset training kecil dan performa cross-validation masih terbatas."
         )
 else:
     st.caption("Upload gambar sapi perah untuk mulai melakukan prediksi.")

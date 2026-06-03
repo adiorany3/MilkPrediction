@@ -1,6 +1,14 @@
 # Prediksi Produksi Susu Sapi Perah
 
-Aplikasi Streamlit ini menggunakan model `milk_yield_model.keras` untuk memprediksi produksi susu sapi perah dari gambar.
+Aplikasi Streamlit ini menggunakan pipeline model terbaru:
+
+```text
+Gambar sapi perah
+    → EfficientNetB0 feature extractor
+    → SVR RBF regressor
+    → prediksi milk_yield_305d
+    → konversi kg ke liter
+```
 
 ## Training data sheet
 
@@ -8,17 +16,39 @@ Dataset/training notebook rujukan:
 
 - Kaggle Notebook: [Cow Milk Prediction by Galuh Adi Insani](https://www.kaggle.com/code/adioranye/cow-milk-prediction-by-galuh-adi-insani/notebook)
 
-Model dalam paket ini menggunakan konfigurasi:
+## Model yang digunakan
+
+File model yang dipakai aplikasi:
+
+```text
+feature_extractor.keras
+milk_yield_regressor.pkl
+preprocess_config.json
+```
+
+Konfigurasi model:
 
 ```json
 {
   "img_size": 224,
-  "model_type": "EfficientNetB0 image regression",
+  "model_type": "EfficientNetB0 feature extractor + classical regression",
+  "best_regressor": "SVR_rbf_C10",
   "target_name": "milk_yield_305d",
-  "source_unit": "kg",
-  "output_unit": "liter",
-  "kg_per_liter": 1.03
+  "output_unit": "kg",
+  "conversion_to_liter": "liter = kg / 1.03"
 }
+```
+
+Output mentah model adalah estimasi **kg/305 hari**, lalu aplikasi mengonversinya menjadi **liter/305 hari** dengan rumus:
+
+```text
+liter = kg / 1.03
+```
+
+Aplikasi juga menampilkan estimasi rata-rata harian:
+
+```text
+liter_per_day = liter_305_day / 305
 ```
 
 ## Struktur file
@@ -26,15 +56,20 @@ Model dalam paket ini menggunakan konfigurasi:
 ```text
 .
 ├── app.py
-├── milk_yield_model.keras
+├── feature_extractor.keras
+├── milk_yield_regressor.pkl
 ├── preprocess_config.json
 ├── requirements.txt
+├── runtime.txt
+├── .python-version
 ├── README.md
 └── .streamlit/
     └── config.toml
 ```
 
 ## Menjalankan lokal
+
+Disarankan memakai Python 3.11.
 
 ```bash
 pip install -r requirements.txt
@@ -43,48 +78,27 @@ streamlit run app.py
 
 ## Deploy ke Streamlit Community Cloud
 
-1. Buat repository GitHub baru.
-2. Upload semua file dalam folder ini.
-3. Buka Streamlit Community Cloud.
-4. Pilih repository.
-5. Main file path: `app.py`.
+1. Upload semua file ke repository GitHub.
+2. Buka Streamlit Community Cloud.
+3. Deploy repository tersebut.
+4. Main file path: `app.py`.
+5. Pada **Advanced settings**, pilih **Python 3.11**.
 6. Deploy.
 
+## Catatan dependency penting
 
-## Perbaikan error deployment TensorFlow
-
-Jika log Streamlit menampilkan error seperti:
-
-```text
-Using Python 3.14.x environment
-ERROR: Could not find a version that satisfies the requirement tensorflow-cpu
-```
-
-penyebabnya adalah lingkungan deploy memakai Python 3.14, sedangkan paket TensorFlow yang digunakan aplikasi ini tidak tersedia untuk Python 3.14 pada environment tersebut.
-
-Gunakan langkah berikut di Streamlit Community Cloud:
-
-1. Buka dashboard aplikasi.
-2. Delete aplikasi yang gagal deploy, lalu deploy ulang dari repository yang sama.
-3. Saat deploy, buka **Advanced settings**.
-4. Pilih **Python version: 3.12**. Jika masih gagal, gunakan **3.11**.
-5. Main file path tetap: `app.py`.
-6. Deploy ulang.
-
-File `requirements.txt` sudah dipin untuk Python 3.11/3.12:
+File `milk_yield_regressor.pkl` dibuat menggunakan `scikit-learn==1.2.2`, sehingga `requirements.txt` mem-pin versi tersebut:
 
 ```text
-streamlit==1.58.0
-numpy==1.26.4
-pillow==11.3.0
-tensorflow-cpu==2.18.1
+scikit-learn==1.2.2
+joblib==1.2.0
 ```
 
-Catatan: file `runtime.txt` dan `.python-version` disertakan sebagai petunjuk versi Python, tetapi pada Streamlit Community Cloud versi Python tetap perlu dipilih dari **Advanced settings** saat deployment.
+Jika versi `scikit-learn` berbeda terlalu jauh, file `.pkl` dapat gagal dimuat atau menghasilkan warning kompatibilitas.
 
 ## Tampilan light/dark
 
-Tema aplikasi tidak dikunci ke `light` atau `dark` di `config.toml`. Elemen kustom seperti footer dan catatan menggunakan CSS adaptif agar tetap terbaca pada lingkungan light maupun dark.
+Tema aplikasi tidak dikunci ke `light` atau `dark`. Elemen kustom seperti footer dan catatan menggunakan CSS adaptif agar tetap terbaca pada lingkungan light maupun dark.
 
 Branding/menu bawaan Streamlit disembunyikan melalui CSS di `app.py`.
 
@@ -98,33 +112,8 @@ Developed by Galuh Adi Insani with training process at Kaggle
 
 Training process: [Cow Milk Prediction by Galuh Adi Insani](https://www.kaggle.com/code/adioranye/cow-milk-prediction-by-galuh-adi-insani/notebook)
 
-## Catatan output
-
-Konfigurasi model menyatakan target bernama `milk_yield_305d`. Karena itu, output utama aplikasi mengikuti target training tersebut. Jika target training adalah 305-day milk yield, maka hasil utama juga merupakan estimasi 305-day milk yield. Aplikasi juga menyediakan estimasi rata-rata per hari dengan rumus sederhana:
-
-```text
-estimasi_per_hari = prediksi_305_hari / 305
-```
-
-
-## Satuan produksi
-
-Aplikasi sekarang menampilkan hasil produksi dalam liter secara eksplisit:
-
-```text
-Estimasi 305-day milk yield = liter/305 hari
-Estimasi rata-rata per hari = liter/hari
-```
-
-Model dianggap menghasilkan prediksi mentah dalam `kg/305 hari`, lalu aplikasi mengonversinya menjadi liter dengan asumsi umum:
-
-```text
-1 liter susu ≈ 1.03 kg
-liter = kg / 1.03
-```
-
-Contoh: jika model menghasilkan `1030 kg/305 hari`, aplikasi menampilkannya sebagai sekitar `1000 liter/305 hari`. Detail prediksi mentah tetap tersedia di expander **Detail konversi** pada aplikasi.
-
 ## Catatan penggunaan
 
-Hasil prediksi adalah estimasi berbasis model, bukan pengukuran produksi aktual. Akurasi sangat bergantung pada kualitas dataset training, sudut foto, pencahayaan, dan kemiripan gambar input dengan data training.
+Hasil prediksi adalah estimasi berbasis model, bukan pengukuran produksi aktual. Model ini bersifat eksperimental karena dataset training kecil dan hasil cross-validation masih terbatas.
+
+Gunakan input gambar yang mendekati data training: gambar sapi perah, pencahayaan jelas, dan sudut foto yang serupa dengan data training.

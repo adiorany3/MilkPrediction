@@ -1,11 +1,9 @@
 {
     "img_size": 224,
-    "model_type": "EfficientNetB0 image regression",
+    "model_type": "EfficientNetB0 feature extractor + classical regression",
+    "best_regressor": "SVR_rbf_C10",
     "target_name": "milk_yield_305d",
-    "output_note": "Output mengikuti target dataset. Jika target adalah 305-day milk yield, output juga 305-day milk yield.",
-    "output_unit": "liter",
-    "unit_note": "Output model dianggap kg/305 hari, lalu aplikasi mengonversi hasil tampilan menjadi liter/305 hari dan liter/hari.",
-    "source_unit": "kg",
-    "kg_per_liter": 1.03,
-    "conversion_formula": "liter = kg / 1.03"
+    "output_unit": "kg",
+    "conversion_to_liter": "liter = kg / 1.03",
+    "prediction_note": "Prediction output is 305-day milk yield in kg before conversion to liter."
 }
