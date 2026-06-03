@@ -81,6 +81,13 @@ def inject_custom_css() -> None:
                 line-height: 1.5;
             }
 
+            .milk-footer a {
+                color: inherit;
+                font-weight: 600;
+                text-decoration: underline;
+                text-underline-offset: 0.18rem;
+            }
+
             .milk-note {
                 padding: 0.85rem 1rem;
                 border-radius: 0.75rem;
@@ -152,21 +159,30 @@ img_size = int(config.get("img_size", 224))
 target_name = config.get("target_name", "milk_yield")
 model_type = config.get("model_type", "Image regression")
 output_note = config.get("output_note", "Output mengikuti satuan target training.")
+source_unit = config.get("source_unit", "kg")
+display_unit = config.get("output_unit", "liter")
+kg_per_liter = float(config.get("kg_per_liter", 1.03))
 
 
 st.title("🐄 Prediksi Produksi Susu Sapi Perah")
 
 st.info(
     "Model ini menerima gambar sapi perah dan menghasilkan prediksi numerik. "
-    "Nilai output mengikuti target saat training. Jika target training adalah 305-day milk yield, "
-    "maka hasil prediksi utama juga merupakan estimasi 305-day milk yield."
+    "Nilai asli model mengikuti target saat training. Karena target training dianggap kg/305 hari, "
+    "aplikasi ini mengonversi hasil prediksi menjadi liter dengan asumsi 1 liter susu ≈ 1.03 kg."
 )
 
 with st.expander("Informasi model", expanded=False):
     st.write(f"**Model:** {model_type}")
     st.write(f"**Ukuran input gambar:** {img_size} × {img_size} px")
     st.write(f"**Target output:** {target_name}")
+    st.write(f"**Satuan sumber model:** {source_unit}/305 hari")
+    st.write(f"**Satuan tampilan aplikasi:** {display_unit}/305 hari")
+    st.write(f"**Faktor konversi:** 1 liter susu ≈ {kg_per_liter:.2f} kg")
     st.write(f"**Catatan:** {output_note}")
+
+main_unit_label = "liter/305 hari"
+daily_unit_label = "liter/hari"
 
 uploaded_file = st.file_uploader(
     "Upload gambar sapi perah",
@@ -199,22 +215,33 @@ if uploaded_file is not None:
             image_array = prepare_image(uploaded_file, img_size)
             prediction = model.predict(image_array, verbose=0)
 
-        predicted_value = float(np.ravel(prediction)[0])
+        predicted_kg_305d = float(np.ravel(prediction)[0])
+        predicted_liter_305d = predicted_kg_305d / kg_per_liter
 
         st.subheader("Hasil Prediksi")
 
         st.metric(
             label=f"Estimasi {target_name}",
-            value=f"{predicted_value:,.2f}",
+            value=f"{predicted_liter_305d:,.2f} {main_unit_label}",
         )
 
         if show_daily_average:
-            daily_average = predicted_value / 305
+            daily_average_liter = predicted_liter_305d / 305
 
             st.metric(
                 label="Estimasi rata-rata per hari",
-                value=f"{daily_average:,.2f}",
+                value=f"{daily_average_liter:,.2f} {daily_unit_label}",
             )
+
+        with st.expander("Detail konversi", expanded=False):
+            st.write(f"Prediksi mentah model: **{predicted_kg_305d:,.2f} kg/305 hari**")
+            st.write(f"Faktor konversi: **1 liter susu ≈ {kg_per_liter:.2f} kg**")
+            st.write("Rumus: **liter = kg / 1.03**")
+
+        st.caption(
+            f"Satuan hasil utama: {main_unit_label}. "
+            f"Satuan rata-rata harian: {daily_unit_label}."
+        )
 
         st.warning(
             "Gunakan hasil ini sebagai estimasi berbasis model, bukan sebagai pengukuran produksi aktual. "
@@ -224,6 +251,11 @@ else:
     st.caption("Upload gambar sapi perah untuk mulai melakukan prediksi.")
 
 st.markdown(
-    '<div class="milk-footer">Developed by Galuh Adi Insani</div>',
+    '''
+    <div class="milk-footer">
+        Developed by Galuh Adi Insani with training process at
+        <a href="https://www.kaggle.com/code/adioranye/cow-milk-prediction-by-galuh-adi-insani/notebook" target="_blank" rel="noopener noreferrer">Kaggle</a>
+    </div>
+    ''',
     unsafe_allow_html=True,
 )

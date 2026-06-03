@@ -14,7 +14,10 @@ Model dalam paket ini menggunakan konfigurasi:
 {
   "img_size": 224,
   "model_type": "EfficientNetB0 image regression",
-  "target_name": "milk_yield_305d"
+  "target_name": "milk_yield_305d",
+  "source_unit": "kg",
+  "output_unit": "liter",
+  "kg_per_liter": 1.03
 }
 ```
 
@@ -87,11 +90,13 @@ Branding/menu bawaan Streamlit disembunyikan melalui CSS di `app.py`.
 
 ## Footer aplikasi
 
-Footer aplikasi menampilkan:
+Footer aplikasi menampilkan informasi pengembang dan tautan proses training di Kaggle:
 
 ```text
-Developed by Galuh Adi Insani
+Developed by Galuh Adi Insani with training process at Kaggle
 ```
+
+Training process: [Cow Milk Prediction by Galuh Adi Insani](https://www.kaggle.com/code/adioranye/cow-milk-prediction-by-galuh-adi-insani/notebook)
 
 ## Catatan output
 
@@ -100,6 +105,25 @@ Konfigurasi model menyatakan target bernama `milk_yield_305d`. Karena itu, outpu
 ```text
 estimasi_per_hari = prediksi_305_hari / 305
 ```
+
+
+## Satuan produksi
+
+Aplikasi sekarang menampilkan hasil produksi dalam liter secara eksplisit:
+
+```text
+Estimasi 305-day milk yield = liter/305 hari
+Estimasi rata-rata per hari = liter/hari
+```
+
+Model dianggap menghasilkan prediksi mentah dalam `kg/305 hari`, lalu aplikasi mengonversinya menjadi liter dengan asumsi umum:
+
+```text
+1 liter susu ≈ 1.03 kg
+liter = kg / 1.03
+```
+
+Contoh: jika model menghasilkan `1030 kg/305 hari`, aplikasi menampilkannya sebagai sekitar `1000 liter/305 hari`. Detail prediksi mentah tetap tersedia di expander **Detail konversi** pada aplikasi.
 
 ## Catatan penggunaan
 
