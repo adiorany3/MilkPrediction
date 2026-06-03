@@ -36,3 +36,5 @@ Konfigurasi model menyatakan target bernama `milk_yield_305d`. Karena itu, outpu
 ```text
 estimasi_per_hari = prediksi_305_hari / 305
 ```
+
+Training data sheet : https://www.kaggle.com/code/adioranye/cow-milk-prediction-by-galuh-adi-insani/notebook
