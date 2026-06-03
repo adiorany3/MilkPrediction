@@ -18,6 +18,84 @@ st.set_page_config(
 )
 
 
+
+def inject_custom_css() -> None:
+    st.markdown(
+        """
+        <style>
+            /* Hide Streamlit default branding and toolbar elements. */
+            #MainMenu {
+                visibility: hidden;
+            }
+
+            footer {
+                visibility: hidden;
+            }
+
+            header {
+                visibility: hidden;
+            }
+
+            .stDeployButton {
+                display: none !important;
+            }
+
+            [data-testid="stToolbar"] {
+                display: none !important;
+            }
+
+            [data-testid="stDecoration"] {
+                display: none !important;
+            }
+
+            [data-testid="stStatusWidget"] {
+                display: none !important;
+            }
+
+            [data-testid="stAppDeployButton"] {
+                display: none !important;
+            }
+
+            :root {
+                color-scheme: light dark;
+                --milk-footer-border: rgba(49, 51, 63, 0.18);
+                --milk-footer-text: rgba(49, 51, 63, 0.72);
+                --milk-soft-card: rgba(255, 255, 255, 0.72);
+            }
+
+            @media (prefers-color-scheme: dark) {
+                :root {
+                    --milk-footer-border: rgba(250, 250, 250, 0.18);
+                    --milk-footer-text: rgba(250, 250, 250, 0.72);
+                    --milk-soft-card: rgba(18, 18, 18, 0.72);
+                }
+            }
+
+            .milk-footer {
+                margin-top: 2.5rem;
+                padding-top: 1rem;
+                border-top: 1px solid var(--milk-footer-border);
+                color: var(--milk-footer-text);
+                text-align: center;
+                font-size: 0.88rem;
+                line-height: 1.5;
+            }
+
+            .milk-note {
+                padding: 0.85rem 1rem;
+                border-radius: 0.75rem;
+                background: var(--milk-soft-card);
+                border: 1px solid var(--milk-footer-border);
+            }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+inject_custom_css()
+
+
 @st.cache_data
 def load_config() -> dict:
     if CONFIG_PATH.exists():
@@ -136,3 +214,8 @@ if uploaded_file is not None:
         )
 else:
     st.caption("Upload gambar sapi perah untuk mulai melakukan prediksi.")
+
+st.markdown(
+    '<div class="milk-footer">Developed by Galuh Adi Insani</div>',
+    unsafe_allow_html=True,
+)
