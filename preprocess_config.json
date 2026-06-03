@@ -1,0 +1,6 @@
+{
+    "img_size": 224,
+    "model_type": "EfficientNetB0 image regression",
+    "target_name": "milk_yield_305d",
+    "output_note": "Output mengikuti target dataset. Jika target adalah 305-day milk yield, output juga 305-day milk yield."
+}
