@@ -112,7 +112,15 @@ def load_config() -> dict:
 
 @st.cache_resource
 def load_prediction_model():
-    import tensorflow as tf
+    try:
+        import tensorflow as tf
+    except ModuleNotFoundError as error:
+        st.error(
+            "TensorFlow belum terinstal. Di Streamlit Community Cloud, pilih Python 3.11 atau 3.12 "
+            "pada Advanced settings, lalu redeploy aplikasi. Python 3.14 belum kompatibel "
+            "dengan paket TensorFlow yang dipakai aplikasi ini."
+        )
+        raise error
 
     try:
         return tf.keras.models.load_model(

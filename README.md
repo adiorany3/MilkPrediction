@@ -47,6 +47,38 @@ streamlit run app.py
 5. Main file path: `app.py`.
 6. Deploy.
 
+
+## Perbaikan error deployment TensorFlow
+
+Jika log Streamlit menampilkan error seperti:
+
+```text
+Using Python 3.14.x environment
+ERROR: Could not find a version that satisfies the requirement tensorflow-cpu
+```
+
+penyebabnya adalah lingkungan deploy memakai Python 3.14, sedangkan paket TensorFlow yang digunakan aplikasi ini tidak tersedia untuk Python 3.14 pada environment tersebut.
+
+Gunakan langkah berikut di Streamlit Community Cloud:
+
+1. Buka dashboard aplikasi.
+2. Delete aplikasi yang gagal deploy, lalu deploy ulang dari repository yang sama.
+3. Saat deploy, buka **Advanced settings**.
+4. Pilih **Python version: 3.12**. Jika masih gagal, gunakan **3.11**.
+5. Main file path tetap: `app.py`.
+6. Deploy ulang.
+
+File `requirements.txt` sudah dipin untuk Python 3.11/3.12:
+
+```text
+streamlit==1.58.0
+numpy==1.26.4
+pillow==11.3.0
+tensorflow-cpu==2.18.1
+```
+
+Catatan: file `runtime.txt` dan `.python-version` disertakan sebagai petunjuk versi Python, tetapi pada Streamlit Community Cloud versi Python tetap perlu dipilih dari **Advanced settings** saat deployment.
+
 ## Tampilan light/dark
 
 Tema aplikasi tidak dikunci ke `light` atau `dark` di `config.toml`. Elemen kustom seperti footer dan catatan menggunakan CSS adaptif agar tetap terbaca pada lingkungan light maupun dark.

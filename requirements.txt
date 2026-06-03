@@ -1,4 +1,6 @@
-streamlit>=1.33
-numpy>=1.26
-pillow>=10.0
-tensorflow-cpu>=2.16,<2.19
+# Deploy with Python 3.11 or 3.12 on Streamlit Community Cloud.
+# TensorFlow currently has no stable wheel for Python 3.14 in this deployment environment.
+streamlit==1.58.0
+numpy==1.26.4
+pillow==11.3.0
+tensorflow-cpu==2.18.1
